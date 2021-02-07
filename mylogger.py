@@ -1,8 +1,11 @@
 #!/usr/bin/env python
 
+import time
 import sys
 import logging
 import random
+
+from logging.handlers import TimedRotatingFileHandler
 
 import networkx as nx
 
@@ -11,41 +14,49 @@ import networkx as nx
 # keeping them separate to make it easier to play with the logger
 def mine_iron():
     logging.info("mining iron")
+    logging.debug("pulling iron out of the ground")
     return 1
 
 
 def chop_tree():
     logging.info("chopping down a tree")
+    logging.debug("getting out an axe and swingin it")
     return 1
 
 
 def kill_cow():
     logging.info("slaughtering a cow")
+    logging.debug("eep")
     return 1
 
 
 def pack_steak(cow):
     logging.info("packaging a steak")
+    logging.debug("wrapping some plastic around the food")
     return 1
 
 
 def make_nails(iron):
     logging.info("making nails")
+    logging.debug("shaping the iron into nails, put them in a box")
     return 1
 
 
 def mill_lumber(tree):
     logging.info("milling lumber")
+    logging.debug("firing up the saw")
     return 1
 
 
 def build_table(lumber, nails):
     logging.info("building a table")
+    logging.debug("hammer hammer etc")
     return 1
 
 
 def have_meal(table, steak):
     logging.info("having a meal")
+    logging.debug("yum yum")
     return None
 
 
@@ -95,7 +106,6 @@ class Economy:
         """
         Make an item (including its dependencies)
         """
-        logging.debug(f"making a '%s'", item)
 
         # TODO not sure ancestors guaranteed a good ordering, might need to
         # sort. Also I'm pretty sure there are tidier ways to store/access info
@@ -131,23 +141,43 @@ class FuncNameWhitelistFilter(logging.Filter):
 def main(argv):
 
     # initialize the logger
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)-15s %(name)-5s %(levelname)-8s %(message)s",
+    fmt = "%(asctime)-15s %(name)-5s %(levelname)-8s %(message)s"
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
+
+    # Make the default stream handler at INFO level
+    rh = logging.StreamHandler()
+    rh.setLevel(logging.INFO)
+    rh.setFormatter(logging.Formatter(fmt))
+    root_logger.addHandler(rh)
+
+    # Add a new handler for DEBUG messages from some specific functions Just
+    # for the hell of it, route into a logfile, set to rotate ever 10 seconds
+    debug_h = TimedRotatingFileHandler(
+        "/tmp/toy-whatever.log",
+        when='S',
+        interval=10,
     )
+    debug_h.setLevel(logging.DEBUG)
+    debug_f = logging.Formatter("%(asctime)-15s %(name)-5s %(levelname)-8s[[cool cool cool]] %(message)s")
+    debug_h.setFormatter(debug_f)
 
     # Add a filter for events from specific function
-    logging.getLogger().addFilter(
+    debug_h.addFilter(
         FuncNameWhitelistFilter([
             "make",
             "mine_iron",
-            "kill_cow"
+            #"kill_cow"
         ])
     )
+    root_logger.addHandler(debug_h)
 
     # Add a cusom filter, we want a way to blacklist/whitelist functions
     G = Economy(write_dot="/tmp/blamo.dot")
-    meal = G.make("meal")
+    nodes = list(G.G.nodes())
+    while True:
+        G.make(random.choice(nodes))
+        time.sleep(random.random())
 
 if __name__ == "__main__":
     sys.exit(main(sys.argv[1:]))
